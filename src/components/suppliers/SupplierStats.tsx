@@ -69,20 +69,35 @@ export function SupplierStats({ stats }: SupplierStatsProps) {
     ];
 
     return (
-        <Row gutter={[16, 16]}>
-            {statItems.map((item) => (
-                <Col xs={24} sm={12} lg={6} key={item.title}>
+        <Row gutter={[12, 12]} className="supplier-stats">
+            {statItems.map((item, index) => (
+                <Col
+                    xs={24}
+                    sm={12}
+                    lg={6}
+                    key={item.title}
+                    className="animate-fade-in-up"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                >
                     <Card
-                        className="shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
+                        className="shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 h-full"
                         styles={{
-                            body: { padding: '20px' }
+                            body: {
+                                padding: '16px 20px',
+                                height: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'space-between'
+                            }
                         }}
                     >
                         <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                                <p className="text-sm text-gray-500 font-medium mb-1">{item.title}</p>
-                                <div className="flex items-baseline space-x-2">
-                                    <span className="text-2xl font-bold" style={{ color: item.color }}>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs sm:text-sm text-gray-500 font-medium mb-1 truncate">
+                                    {item.title}
+                                </p>
+                                <div className="flex items-baseline flex-wrap gap-1">
+                                    <span className="text-xl sm:text-2xl font-bold" style={{ color: item.color }}>
                                         {item.prefix}
                                         {typeof item.value === 'number' ? (
                                             <CountUp
@@ -94,32 +109,34 @@ export function SupplierStats({ stats }: SupplierStatsProps) {
                                                 useEasing={true}
                                             />
                                         ) : (
-                                            item.value
+                                            <span className="text-base sm:text-xl">{item.value}</span>
                                         )}
                                         {item.suffix}
                                     </span>
                                 </div>
-                                <div className="flex items-center mt-2">
+                                <div className="flex items-center mt-1">
                                     {item.trend === 'up' ? (
-                                        <RiseOutlined className="text-green-500 text-sm" />
+                                        <RiseOutlined className="text-green-500 text-xs sm:text-sm" />
                                     ) : (
-                                        <FallOutlined className="text-red-500 text-sm" />
+                                        <FallOutlined className="text-red-500 text-xs sm:text-sm" />
                                     )}
-                                    <span className={`text-sm ml-1 ${item.trend === 'up' ? 'text-green-600' : 'text-red-600'
+                                    <span className={`text-xs sm:text-sm ml-1 ${item.trend === 'up' ? 'text-green-600' : 'text-red-600'
                                         }`}>
                                         {item.trendValue}
                                     </span>
                                 </div>
                             </div>
                             <div
-                                className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                                className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 ml-2"
                                 style={{ backgroundColor: item.bgColor }}
                             >
-                                {item.icon}
+                                <span className="text-base sm:text-xl">
+                                    {item.icon}
+                                </span>
                             </div>
                         </div>
                         <div className="mt-3">
-                            <div className="w-full bg-gray-100 rounded-full h-1">
+                            <div className="w-full bg-gray-100 rounded-full h-1 overflow-hidden">
                                 <div
                                     className="h-1 rounded-full transition-all duration-1000"
                                     style={{
@@ -140,6 +157,40 @@ export function SupplierStats({ stats }: SupplierStatsProps) {
                     }
                     to {
                         width: 100%;
+                    }
+                }
+                
+                @keyframes fadeInUp {
+                    from {
+                        opacity: 0;
+                        transform: translateY(20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                
+                .animate-fade-in-up {
+                    animation: fadeInUp 0.6s ease-out forwards;
+                    opacity: 0;
+                }
+                
+                /* Mobile optimizations */
+                @media (max-width: 576px) {
+                    .supplier-stats .ant-card {
+                        border-radius: 12px;
+                    }
+                    
+                    .supplier-stats .ant-card-body {
+                        padding: 14px 16px !important;
+                    }
+                }
+                
+                /* Tablet optimizations */
+                @media (min-width: 577px) and (max-width: 992px) {
+                    .supplier-stats .ant-card-body {
+                        padding: 18px 20px !important;
                     }
                 }
             `}</style>

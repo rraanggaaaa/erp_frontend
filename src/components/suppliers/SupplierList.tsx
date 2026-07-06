@@ -20,7 +20,9 @@ import {
     Empty,
     Badge,
     Typography,
-    Divider
+    Divider,
+    App,
+    Drawer
 } from 'antd';
 import {
     SearchOutlined,
@@ -34,7 +36,8 @@ import {
     CheckCircleOutlined,
     ReloadOutlined,
     UserOutlined,
-    ClockCircleOutlined
+    ClockCircleOutlined,
+    FilterOutlined
 } from '@ant-design/icons';
 import { Supplier } from '@/types/supplier';
 import { supplierApi } from '@/lib/api';
@@ -60,6 +63,7 @@ export function SupplierList({
     onRefresh,
     pagination
 }: SupplierListProps) {
+    const { message: messageApi } = App.useApp();
     const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
@@ -67,6 +71,18 @@ export function SupplierList({
     const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
     const [form] = Form.useForm();
     const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+    const [isMobile, setIsMobile] = useState(false);
+    const [drawerVisible, setDrawerVisible] = useState(false);
+
+    // Detect mobile screen
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     useEffect(() => {
         setSuppliers(initialSuppliers);
@@ -96,7 +112,73 @@ export function SupplierList({
         return configs[status as keyof typeof configs] || configs['Active'];
     };
 
-    const columns = [
+    // Mobile columns (simplified)
+    const mobileColumns = [
+        {
+            title: 'Supplier',
+            dataIndex: 'supplier_name',
+            key: 'supplier_name',
+            render: (text: string, record: Supplier) => (
+                <div className="flex items-center space-x-3">
+                    <Avatar
+                        size={40}
+                        style={{ backgroundColor: '#1890ff' }}
+                        icon={<UserOutlined />}
+                    />
+                    <div>
+                        <div className="font-semibold text-gray-900 text-sm">{text}</div>
+                        <div className="text-xs text-gray-500">Code: {record.supplier_code}</div>
+                        {record.nickname && (
+                            <div className="text-xs text-gray-400">Nickname: {record.nickname}</div>
+                        )}
+                        <div className="mt-1">
+                            <Badge
+                                status={getStatusConfig(record.status).color as any}
+                                text={getStatusConfig(record.status).text}
+                            />
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            title: 'Actions',
+            key: 'actions',
+            width: 80,
+            render: (_: any, record: Supplier) => (
+                <Dropdown
+                    menu={{
+                        items: [
+                            {
+                                key: 'view',
+                                icon: <EyeOutlined />,
+                                label: 'View Details',
+                            },
+                            {
+                                key: 'edit',
+                                icon: <EditOutlined />,
+                                label: 'Edit',
+                                onClick: () => handleEdit(record),
+                            },
+                            {
+                                key: 'delete',
+                                icon: <DeleteOutlined />,
+                                label: 'Delete',
+                                danger: true,
+                                onClick: () => handleDelete(record.id),
+                            },
+                        ]
+                    }}
+                    placement="bottomRight"
+                >
+                    <Button type="text" icon={<MoreOutlined />} size="small" />
+                </Dropdown>
+            ),
+        },
+    ];
+
+    // Desktop columns (full)
+    const desktopColumns = [
         {
             title: 'Supplier',
             dataIndex: 'supplier_name',
@@ -189,6 +271,9 @@ export function SupplierList({
     const handleEdit = (supplier: Supplier) => {
         setEditingSupplier(supplier);
         form.setFieldsValue(supplier);
+        if (isMobile) {
+            setDrawerVisible(false);
+        }
         setModalVisible(true);
     };
 
@@ -204,12 +289,12 @@ export function SupplierList({
                 try {
                     const response = await supplierApi.delete(id);
                     if (response.success) {
-                        message.success('Supplier deleted successfully');
+                        messageApi.success('Supplier deleted successfully');
                         setSuppliers(suppliers.filter(s => s.id !== id));
                         if (onRefresh) onRefresh();
                     }
                 } catch (error) {
-                    message.error('Failed to delete supplier');
+                    messageApi.error('Failed to delete supplier');
                 }
             },
         });
@@ -220,17 +305,17 @@ export function SupplierList({
             const values = await form.validateFields();
             if (editingSupplier) {
                 await supplierApi.update(editingSupplier.id, values);
-                message.success('Supplier updated successfully');
+                messageApi.success('Supplier updated successfully');
             } else {
                 await supplierApi.create(values);
-                message.success('Supplier created successfully');
+                messageApi.success('Supplier created successfully');
             }
             setModalVisible(false);
             form.resetFields();
             setEditingSupplier(null);
             if (onRefresh) onRefresh();
         } catch (error) {
-            message.error('Failed to save supplier');
+            messageApi.error('Failed to save supplier');
         }
     };
 
@@ -252,15 +337,15 @@ export function SupplierList({
         }
 
         return (
-            <Row gutter={[16, 16]}>
+            <Row gutter={[12, 12]}>
                 {filteredSuppliers.map((supplier) => {
                     const statusConfig = getStatusConfig(supplier.status);
                     return (
-                        <Col xs={24} sm={12} lg={8} xl={6} key={supplier.id}>
+                        <Col xs={24} sm={12} md={8} lg={6} key={supplier.id}>
                             <Card
-                                className="hover:shadow-lg transition-all duration-300"
+                                className="hover:shadow-lg transition-all duration-300 h-full"
                                 styles={{
-                                    body: { padding: '16px' }
+                                    body: { padding: '14px 16px' }
                                 }}
                                 actions={[
                                     <EyeOutlined key="view" className="text-blue-600" />,
@@ -270,20 +355,20 @@ export function SupplierList({
                             >
                                 <div className="text-center">
                                     <Avatar
-                                        size={64}
+                                        size={isMobile ? 48 : 64}
                                         style={{ backgroundColor: '#1890ff' }}
                                         icon={<UserOutlined />}
-                                        className="mb-3"
+                                        className="mb-2"
                                     />
-                                    <h3 className="font-semibold text-lg mb-1">{supplier.supplier_name}</h3>
-                                    <p className="text-sm text-gray-500 mb-1">Code: {supplier.supplier_code}</p>
+                                    <h3 className="font-semibold text-sm sm:text-base mb-1 truncate">{supplier.supplier_name}</h3>
+                                    <p className="text-xs sm:text-sm text-gray-500 mb-1">Code: {supplier.supplier_code}</p>
                                     {supplier.nickname && (
-                                        <p className="text-sm text-gray-400 mb-2">Nickname: {supplier.nickname}</p>
+                                        <p className="text-xs text-gray-400 mb-2 truncate">Nickname: {supplier.nickname}</p>
                                     )}
                                     <Badge
                                         status={statusConfig.color as any}
                                         text={statusConfig.text}
-                                        className="mb-3"
+                                        className="mb-2"
                                     />
                                 </div>
                             </Card>
@@ -294,74 +379,167 @@ export function SupplierList({
         );
     };
 
+    // Mobile Drawer for filters
+    const renderMobileDrawer = () => (
+        <Drawer
+            title="Filters & Actions"
+            placement="right"
+            onClose={() => setDrawerVisible(false)}
+            open={drawerVisible}
+            width={280}
+        >
+            <div className="space-y-4">
+                <Input
+                    placeholder="Search supplier..."
+                    prefix={<SearchOutlined className="text-gray-400" />}
+                    onChange={(e) => setSearch(e.target.value)}
+                    size="large"
+                    allowClear
+                />
+                <div className="flex flex-col space-y-2">
+                    <Button
+                        icon={<ReloadOutlined />}
+                        onClick={onRefresh}
+                        block
+                    >
+                        Refresh
+                    </Button>
+                    <Button
+                        icon={<ExportOutlined />}
+                        block
+                    >
+                        Export
+                    </Button>
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => {
+                            setEditingSupplier(null);
+                            form.resetFields();
+                            setModalVisible(true);
+                            setDrawerVisible(false);
+                        }}
+                        block
+                        size="large"
+                    >
+                        New Supplier
+                    </Button>
+                </div>
+            </div>
+        </Drawer>
+    );
+
     return (
         <div className="space-y-4">
-            {/* Search and Actions */}
-            <Row gutter={[16, 16]} align="middle">
-                <Col xs={24} md={12}>
+            {/* Search and Actions - Desktop */}
+            <div className="hidden md:block">
+                <Row gutter={[16, 16]} align="middle">
+                    <Col xs={24} md={12}>
+                        <Input
+                            placeholder="Search by name, code, or nickname..."
+                            prefix={<SearchOutlined className="text-gray-400" />}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="max-w-md"
+                            size="large"
+                            allowClear
+                        />
+                    </Col>
+                    <Col xs={24} md={12}>
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                            <Tooltip title="Refresh">
+                                <Button
+                                    icon={<ReloadOutlined />}
+                                    size="large"
+                                    onClick={onRefresh}
+                                />
+                            </Tooltip>
+                            <Button
+                                icon={<ExportOutlined />}
+                                size="large"
+                            >
+                                Export
+                            </Button>
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                size="large"
+                                onClick={() => {
+                                    setEditingSupplier(null);
+                                    form.resetFields();
+                                    setModalVisible(true);
+                                }}
+                            >
+                                New Supplier
+                            </Button>
+                        </div>
+                    </Col>
+                </Row>
+            </div>
+
+            {/* Search and Actions - Mobile */}
+            <div className="block md:hidden">
+                <div className="flex items-center gap-2">
                     <Input
-                        placeholder="Search by name, code, or nickname..."
+                        placeholder="Search supplier..."
                         prefix={<SearchOutlined className="text-gray-400" />}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="max-w-md"
-                        size="large"
+                        size="middle"
                         allowClear
+                        className="flex-1"
                     />
-                </Col>
-                <Col xs={24} md={12}>
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                        <Tooltip title="Refresh">
-                            <Button
-                                icon={<ReloadOutlined />}
-                                size="large"
-                                onClick={onRefresh}
-                            />
-                        </Tooltip>
-                        <Button
-                            icon={<ExportOutlined />}
-                            size="large"
-                        >
-                            Export
-                        </Button>
-                        <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            size="large"
-                            onClick={() => {
-                                setEditingSupplier(null);
-                                form.resetFields();
-                                setModalVisible(true);
-                            }}
-                        >
-                            New Supplier
-                        </Button>
-                    </div>
-                </Col>
-            </Row>
+                    <Button
+                        icon={<FilterOutlined />}
+                        onClick={() => setDrawerVisible(true)}
+                    >
+                        Filter
+                    </Button>
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => {
+                            setEditingSupplier(null);
+                            form.resetFields();
+                            setModalVisible(true);
+                        }}
+                        size="middle"
+                    >
+                        Add
+                    </Button>
+                </div>
+            </div>
 
             {/* Table or Grid View */}
             {viewMode === 'list' ? (
-                <Table
-                    columns={columns}
-                    dataSource={filteredSuppliers}
-                    rowKey="id"
-                    loading={loading}
-                    pagination={{
-                        total: pagination?.total || filteredSuppliers.length,
-                        pageSize: pagination?.limit || 10,
-                        current: pagination?.page || 1,
-                        showSizeChanger: true,
-                        showTotal: (total) => `Total ${total} suppliers`
-                    }}
-                    className="shadow-sm"
-                    rowSelection={{
-                        selectedRowKeys,
-                        onChange: setSelectedRowKeys,
-                    }}
-                />
+                <div className="overflow-x-auto">
+                    <Table
+                        columns={isMobile ? mobileColumns : desktopColumns}
+                        dataSource={filteredSuppliers}
+                        rowKey="id"
+                        loading={loading}
+                        pagination={{
+                            total: pagination?.total || filteredSuppliers.length,
+                            pageSize: pagination?.limit || 10,
+                            current: pagination?.page || 1,
+                            showSizeChanger: !isMobile,
+                            showQuickJumper: !isMobile,
+                            showTotal: (total) => `Total ${total} suppliers`,
+                            simple: isMobile,
+                        }}
+                        className="shadow-sm"
+                        rowSelection={!isMobile ? {
+                            selectedRowKeys,
+                            onChange: setSelectedRowKeys,
+                        } : undefined}
+                        size={isMobile ? 'small' : 'middle'}
+                        scroll={isMobile ? { x: 400 } : undefined}
+                    />
+                </div>
             ) : (
                 renderGridView()
             )}
+
+            {/* Mobile Drawer */}
+            {renderMobileDrawer()}
 
             {/* Supplier Form Modal */}
             <Modal
@@ -370,7 +548,7 @@ export function SupplierList({
                         <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white">
                             <UserOutlined />
                         </div>
-                        <span className="text-lg font-semibold">
+                        <span className="text-base sm:text-lg font-semibold">
                             {editingSupplier ? 'Edit Supplier' : 'New Supplier'}
                         </span>
                     </div>
@@ -382,20 +560,32 @@ export function SupplierList({
                     form.resetFields();
                     setEditingSupplier(null);
                 }}
-                width={600}
+                width={isMobile ? '95%' : 600}
                 okText={editingSupplier ? 'Update' : 'Create'}
                 cancelText="Cancel"
-                okButtonProps={{ size: 'large' }}
-                cancelButtonProps={{ size: 'large' }}
+                okButtonProps={{ size: isMobile ? 'middle' : 'large' }}
+                cancelButtonProps={{ size: isMobile ? 'middle' : 'large' }}
+                footer={[
+                    <Button key="cancel" onClick={() => {
+                        setModalVisible(false);
+                        form.resetFields();
+                        setEditingSupplier(null);
+                    }}>
+                        Cancel
+                    </Button>,
+                    <Button key="submit" type="primary" onClick={handleModalSubmit}>
+                        {editingSupplier ? 'Update' : 'Create'}
+                    </Button>,
+                ]}
             >
-                <Divider className="my-4" />
+                <Divider className="my-3" />
                 <Form
                     form={form}
                     layout="vertical"
                     initialValues={editingSupplier || {}}
                 >
-                    <Row gutter={24}>
-                        <Col span={12}>
+                    <Row gutter={[16, 0]}>
+                        <Col xs={24} sm={12}>
                             <Form.Item
                                 name="supplier_name"
                                 label="Supplier Name"
@@ -404,7 +594,7 @@ export function SupplierList({
                                 <Input placeholder="Enter supplier name" size="large" />
                             </Form.Item>
                         </Col>
-                        <Col span={12}>
+                        <Col xs={24} sm={12}>
                             <Form.Item
                                 name="supplier_code"
                                 label="Supplier Code"
@@ -414,8 +604,8 @@ export function SupplierList({
                             </Form.Item>
                         </Col>
                     </Row>
-                    <Row gutter={24}>
-                        <Col span={12}>
+                    <Row gutter={[16, 0]}>
+                        <Col xs={24} sm={12}>
                             <Form.Item
                                 name="nickname"
                                 label="Nick Name"
@@ -423,7 +613,7 @@ export function SupplierList({
                                 <Input placeholder="Enter nickname" size="large" />
                             </Form.Item>
                         </Col>
-                        <Col span={12}>
+                        <Col xs={24} sm={12}>
                             <Form.Item
                                 name="status"
                                 label="Status"
@@ -445,6 +635,17 @@ export function SupplierList({
                     </Row>
                 </Form>
             </Modal>
+
+            <style jsx>{`
+                @media (max-width: 576px) {
+                    .ant-table {
+                        font-size: 12px;
+                    }
+                    .ant-table-cell {
+                        padding: 8px 12px !important;
+                    }
+                }
+            `}</style>
         </div>
     );
 }
