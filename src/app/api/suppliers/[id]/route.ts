@@ -5,10 +5,10 @@ const BACKEND_URL = "https://erp-backend-5ax6.vercel.app/api/v1";
 // GET - Get supplier by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const id = params.id;
+    const { id } = await params;
     const url = `${BACKEND_URL}/suppliers/${id}`;
 
     console.log("🔄 [GET by ID] Proxying to:", url);
@@ -44,10 +44,10 @@ export async function GET(
 // PUT - Update supplier by ID
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const id = params.id;
+    const { id } = await params;
     const body = await request.json();
     const url = `${BACKEND_URL}/suppliers/${id}`;
 
@@ -81,10 +81,10 @@ export async function PUT(
 // DELETE - Delete supplier by ID
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const id = params.id;
+    const { id } = await params;
     const url = `${BACKEND_URL}/suppliers/${id}`;
 
     console.log("🔄 [DELETE] Proxying to:", url);
@@ -107,6 +107,43 @@ export async function DELETE(
     console.error("❌ [DELETE] Proxy error:", error);
     return NextResponse.json(
       { success: false, message: "Failed to delete supplier" },
+      { status: 500 },
+    );
+  }
+}
+
+// PATCH - Partial update (optional)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    const url = `${BACKEND_URL}/suppliers/${id}`;
+
+    console.log("🔄 [PATCH] Proxying to:", url);
+    console.log("📤 [PATCH] Data:", body);
+
+    const response = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+    console.log("📥 [PATCH] Response:", data);
+
+    return NextResponse.json(data, {
+      status: response.status,
+    });
+  } catch (error) {
+    console.error("❌ [PATCH] Proxy error:", error);
+    return NextResponse.json(
+      { success: false, message: "Failed to partially update supplier" },
       { status: 500 },
     );
   }
